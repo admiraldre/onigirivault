@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Anime Search</title>
-    
+
     <!-- AWS SDK Script -->
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1437.0.min.js"></script>
 
-    <!-- Initialize AWS SDK -->
+    <!-- Add your AWS configuration here -->
     <script>
         AWS.config.update({
             region: 'us-east-1', // Replace with your AWS region
             credentials: new AWS.CognitoIdentityCredentials({
-                IdentityPoolId: 'YOUR_IDENTITY_POOL_ID', // Replace with your Identity Pool ID
+                IdentityPoolId: 'OnigiriVault-pool', // Replace with your Identity Pool ID
             })
         });
     </script>
@@ -27,10 +27,11 @@
     <div class="container">
         <h1>Anime Search</h1>
 
-        <!-- Sign In and Sign Up Section -->
+        <!-- Authentication Section -->
         <div id="auth-container">
             <button id="signInButton">Sign In</button>
             <button id="signUpButton">Sign Up</button>
+            <button id="signOutButton" style="display:none;">Sign Out</button>
         </div>
 
         <!-- Search Bar -->
