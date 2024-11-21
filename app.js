@@ -1,4 +1,3 @@
-// Function to generate the SECRET_HASH
 function getSecretHash(username) {
     const clientId = '2drs5052b2kp013bgs0rbh1gi0'; // Your Cognito App client ID
     const clientSecret = 'n651t7sp7fh1sfcfcea2guul5894ncgn9g2q9qb0q0rl3rd4ohm'; // Your Cognito App client secret
@@ -53,10 +52,14 @@ document.getElementById('signInButton').addEventListener('click', function () {
     const email = prompt("Enter your email:");
     const password = prompt("Enter your password:");
 
+    // Generate the SECRET_HASH
+    const secretHash = getSecretHash(email);
+    console.log("Generated SECRET_HASH: ", secretHash); // Log for debugging
+
     const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails({
         Username: email,
         Password: password,
-        SecretHash: getSecretHash(email), // Include the SECRET_HASH here
+        SecretHash: secretHash, // Pass the SECRET_HASH here
     });
 
     const userData = {
@@ -103,12 +106,11 @@ document.getElementById('searchButton').addEventListener('click', async function
         // Get the authentication token
         const token = await getUserToken();
 
-        const apiUrl = `https://api.jikan.moe/v3/search/anime?q=${query}&page=1`; // Example API URL
-        const response = await fetch(apiUrl, {
+        const response = await fetch(`${apiUrl}?q=${query}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` // Include JWT token in the Authorization header
+                'Authorization': token // Include JWT token in the Authorization header
             }
         });
 
@@ -138,7 +140,7 @@ function handleResponseData(data) {
     }
 
     // Ensure 'data' is an array before proceeding
-    const results = Array.isArray(data.results) ? data.results : [];
+    const results = Array.isArray(data) ? data : data.results || []; // Adjust 'results' based on the actual structure
 
     if (results.length === 0) {
         resultsDiv.innerHTML = '<p>No results found.</p>';
