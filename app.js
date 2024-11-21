@@ -6,7 +6,7 @@ document.getElementById('searchButton').addEventListener('click', function() {
         alert('Please enter a search query');
         return;
     }
-    
+
     fetch(`${apiUrl}?q=${query}`, {
         method: 'GET',
         headers: {
@@ -15,11 +15,24 @@ document.getElementById('searchButton').addEventListener('click', function() {
     })
     .then(response => response.json())
     .then(data => {
+        // Check if the response contains a 'body' field and parse it if necessary
+        if (data.body) {
+            data = JSON.parse(data.body);
+        }
+
+        console.log(data); // Log data for debugging purposes
+
         if (data.error) {
             alert(data.error);
         } else {
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '';
+            resultsDiv.innerHTML = ''; // Clear previous results
+
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<p>No results found.</p>';
+                return;
+            }
+
             data.forEach(anime => {
                 const animeDiv = document.createElement('div');
                 animeDiv.classList.add('anime-card');
@@ -35,6 +48,7 @@ document.getElementById('searchButton').addEventListener('click', function() {
         }
     })
     .catch(error => {
+        console.error(error); // Log error for debugging
         alert('Error fetching data: ' + error);
     });
 });
