@@ -1,14 +1,22 @@
 // API URL for fetching anime data
 const apiUrl = 'https://z0vjtrx3vf.execute-api.us-east-1.amazonaws.com/prod/anime';
 
+// Initialize Cognito User Pool
+const poolData = {
+    UserPoolId: 'us-east-1_13v30q5on',
+    ClientId: '2drs5052b2kp013bgs0rbh1gi0',
+};
+
+const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
 // Placeholder function for getting Cognito user token
 async function getUserToken() {
     return new Promise((resolve, reject) => {
-        const user = AWS.config.credentials.identityId;
-        if (user) {
-            AWS.config.credentials.refresh((err) => {
+        const cognitoUser = userPool.getCurrentUser();
+        if (cognitoUser) {
+            cognitoUser.getSession((err, session) => {
                 if (err) reject(err);
-                else resolve(AWS.config.credentials.idToken.jwtToken); // Retrieve JWT token
+                else resolve(session.getIdToken().getJwtToken());
             });
         } else {
             reject('User is not logged in.');
@@ -16,16 +24,64 @@ async function getUserToken() {
     });
 }
 
-// Handle sign-in functionality
-document.getElementById('signInButton').addEventListener('click', async function () {
-    // Replace with Cognito User Pool sign-in logic
-    alert("Sign In functionality will be implemented here.");
+// Sign-up function
+document.getElementById('signUpButton').addEventListener('click', function () {
+    const email = prompt("Enter your email:");
+    const password = prompt("Enter your password:");
+    
+    const userAttributes = [
+        new AmazonCognitoIdentity.CognitoUserAttribute({ Name: "email", Value: email })
+    ];
+
+    userPool.signUp(email, password, userAttributes, null, (err, result) => {
+        if (err) {
+            alert("Error signing up: " + err.message || JSON.stringify(err));
+        } else {
+            alert("Signup successful. Please verify your email.");
+        }
+    });
 });
 
-// Handle sign-up functionality
-document.getElementById('signUpButton').addEventListener('click', async function () {
-    // Replace with Cognito User Pool sign-up logic
-    alert("Sign Up functionality will be implemented here.");
+// Sign-in function
+document.getElementById('signInButton').addEventListener('click', function () {
+    const email = prompt("Enter your email:");
+    const password = prompt("Enter your password:");
+
+    const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails({
+        Username: email,
+        Password: password,
+    });
+
+    const userData = {
+        Username: email,
+        Pool: userPool,
+    };
+
+    const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+
+    cognitoUser.authenticateUser(authenticationDetails, {
+        onSuccess: function (result) {
+            alert('Sign in successful!');
+            document.getElementById('signInButton').style.display = 'none';
+            document.getElementById('signUpButton').style.display = 'none';
+            document.getElementById('signOutButton').style.display = 'inline';
+        },
+        onFailure: function (err) {
+            alert('Error signing in: ' + err.message || JSON.stringify(err));
+        }
+    });
+});
+
+// Sign-out function
+document.getElementById('signOutButton').addEventListener('click', function () {
+    const cognitoUser = userPool.getCurrentUser();
+    if (cognitoUser) {
+        cognitoUser.signOut();
+        alert("Sign out successful.");
+        document.getElementById('signInButton').style.display = 'inline';
+        document.getElementById('signUpButton').style.display = 'inline';
+        document.getElementById('signOutButton').style.display = 'none';
+    }
 });
 
 // Search Button Click Event
