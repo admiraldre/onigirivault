@@ -1,5 +1,11 @@
-// API URL for fetching anime data
-const apiUrl = 'https://z0vjtrx3vf.execute-api.us-east-1.amazonaws.com/prod/anime';
+// Function to generate the SECRET_HASH
+function getSecretHash(username) {
+    const clientId = '2drs5052b2kp013bgs0rbh1gi0'; // Your Cognito App client ID
+    const clientSecret = 'n651t7sp7fh1sfcfcea2guul5894ncgn9g2q9qb0q0rl3rd4ohm'; // Your Cognito App client secret
+    const message = username + clientId;
+    const hash = CryptoJS.HmacSHA256(message, clientSecret);
+    return hash.toString(CryptoJS.enc.Base64);
+}
 
 // Initialize Cognito User Pool
 const poolData = {
@@ -50,6 +56,7 @@ document.getElementById('signInButton').addEventListener('click', function () {
     const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails({
         Username: email,
         Password: password,
+        SecretHash: getSecretHash(email), // Include the SECRET_HASH here
     });
 
     const userData = {
