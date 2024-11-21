@@ -12,12 +12,37 @@
     <div class="container">
         <h1>Anime Search</h1>
         
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="Search for an anime...">
-            <button id="searchButton">Search</button>
+        <!-- Sign In/Sign Up Forms -->
+        <div id="authForms">
+            <button id="showSignUp">Sign Up</button>
+            <button id="showSignIn">Sign In</button>
+            
+            <!-- Sign In Form -->
+            <div id="signInForm" class="authForm">
+                <h2>Sign In</h2>
+                <input type="email" id="signInEmail" placeholder="Email">
+                <input type="password" id="signInPassword" placeholder="Password">
+                <button id="signInButton">Sign In</button>
+            </div>
+
+            <!-- Sign Up Form -->
+            <div id="signUpForm" class="authForm">
+                <h2>Sign Up</h2>
+                <input type="email" id="signUpEmail" placeholder="Email">
+                <input type="password" id="signUpPassword" placeholder="Password">
+                <button id="signUpButton">Sign Up</button>
+            </div>
         </div>
 
-        <div id="results"></div>
+        <!-- Search and Results Section (hidden by default) -->
+        <div id="searchSection" style="display: none;">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search for an anime...">
+                <button id="searchButton">Search</button>
+            </div>
+
+            <div id="results"></div>
+        </div>
     </div>
 
     <script src="app.js"></script>
