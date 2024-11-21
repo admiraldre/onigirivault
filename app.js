@@ -1,3 +1,4 @@
+// Function to generate the SECRET_HASH
 function getSecretHash(username) {
     const clientId = '2drs5052b2kp013bgs0rbh1gi0'; // Your Cognito App client ID
     const clientSecret = 'n651t7sp7fh1sfcfcea2guul5894ncgn9g2q9qb0q0rl3rd4ohm'; // Your Cognito App client secret
@@ -52,14 +53,10 @@ document.getElementById('signInButton').addEventListener('click', function () {
     const email = prompt("Enter your email:");
     const password = prompt("Enter your password:");
 
-    // Generate the SECRET_HASH
-    const secretHash = getSecretHash(email);
-    console.log("Generated SECRET_HASH: ", secretHash); // Log for debugging
-
     const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails({
         Username: email,
         Password: password,
-        SecretHash: secretHash, // Pass the SECRET_HASH here
+        SecretHash: getSecretHash(email), // Include the SECRET_HASH here
     });
 
     const userData = {
@@ -78,6 +75,7 @@ document.getElementById('signInButton').addEventListener('click', function () {
         },
         onFailure: function (err) {
             alert('Error signing in: ' + err.message || JSON.stringify(err));
+            console.log("Error: ", err);
         }
     });
 });
