@@ -103,11 +103,12 @@ document.getElementById('searchButton').addEventListener('click', async function
         // Get the authentication token
         const token = await getUserToken();
 
-        const response = await fetch(`${apiUrl}?q=${query}`, {
+        const apiUrl = `https://api.jikan.moe/v3/search/anime?q=${query}&page=1`; // Example API URL
+        const response = await fetch(apiUrl, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': token // Include JWT token in the Authorization header
+                'Authorization': `Bearer ${token}` // Include JWT token in the Authorization header
             }
         });
 
@@ -137,7 +138,7 @@ function handleResponseData(data) {
     }
 
     // Ensure 'data' is an array before proceeding
-    const results = Array.isArray(data) ? data : data.results || []; // Adjust 'results' based on the actual structure
+    const results = Array.isArray(data.results) ? data.results : [];
 
     if (results.length === 0) {
         resultsDiv.innerHTML = '<p>No results found.</p>';
