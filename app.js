@@ -1,3 +1,4 @@
+// API URL for fetching anime data
 const apiUrl = 'https://z0vjtrx3vf.execute-api.us-east-1.amazonaws.com/prod/anime';
 
 // Placeholder function for getting Cognito user token
@@ -15,6 +16,77 @@ async function getUserToken() {
     });
 }
 
+// Show the sign-in form and hide the sign-up form
+document.getElementById('showSignIn').addEventListener('click', () => {
+    document.getElementById('signUpForm').style.display = 'none';
+    document.getElementById('signInForm').style.display = 'block';
+});
+
+// Show the sign-up form and hide the sign-in form
+document.getElementById('showSignUp').addEventListener('click', () => {
+    document.getElementById('signInForm').style.display = 'none';
+    document.getElementById('signUpForm').style.display = 'block';
+});
+
+// Sign-In button event listener
+document.getElementById('signInButton').addEventListener('click', async function () {
+    const email = document.getElementById('signInEmail').value;
+    const password = document.getElementById('signInPassword').value;
+    
+    // Implement sign-in logic (e.g., Firebase or AWS Cognito)
+    try {
+        const result = await signInUser(email, password);
+        if (result.success) {
+            alert('Sign-in successful!');
+            document.getElementById('authForms').style.display = 'none'; // Hide the auth forms
+            document.getElementById('searchSection').style.display = 'block'; // Show the search section
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('Sign-In Failed: ' + error.message);
+    }
+});
+
+// Sign-Up button event listener
+document.getElementById('signUpButton').addEventListener('click', async function () {
+    const email = document.getElementById('signUpEmail').value;
+    const password = document.getElementById('signUpPassword').value;
+    
+    // Implement sign-up logic (e.g., Firebase or AWS Cognito)
+    try {
+        const result = await signUpUser(email, password);
+        if (result.success) {
+            alert('Sign-up successful! Please sign in.');
+            document.getElementById('signUpForm').style.display = 'none';
+            document.getElementById('signInForm').style.display = 'block';
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('Sign-Up Failed: ' + error.message);
+    }
+});
+
+// Placeholder functions for sign-in/sign-up logic (replace with actual implementation)
+async function signInUser(email, password) {
+    // Implement the actual authentication logic here using Cognito or another service
+    // For example, if using Cognito:
+    // try {
+    //     await CognitoUser.authenticateUser(new CognitoAuthenticationDetails(...));
+    //     return { success: true };
+    // } catch (error) {
+    //     return { success: false, message: error.message };
+    // }
+    return { success: true }; // Example success response
+}
+
+async function signUpUser(email, password) {
+    // Implement the sign-up logic here
+    return { success: true }; // Example success response
+}
+
+// Anime search button event listener
 document.getElementById('searchButton').addEventListener('click', async function () {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) {
@@ -44,6 +116,7 @@ document.getElementById('searchButton').addEventListener('click', async function
     }
 });
 
+// Function to display the search results
 function handleResponseData(data) {
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = ''; // Clear previous results
