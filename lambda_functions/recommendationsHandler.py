@@ -1,111 +1,128 @@
 import json
 import requests
 import boto3
-import time
+from collections import Counter
+from datetime import datetime
+import random
 
-# Constants
-MAX_RETRIES = 3  # Reduced number of retries
-RETRY_DELAY = 2  # Delay between retries in seconds
-MAX_GENRES = 3   # Limit the number of genres to process
-MAX_ANIME_PER_GENRE = 3  # Limit the number of anime per genre
-
+# AWS Clients
 s3 = boto3.client('s3')
 BUCKET_NAME = "ov-favelist"
 
-def get_unique_genres(favorites):
-    """Extract unique genres from the user's favorites."""
-    genres = set()
-    for anime in favorites:
-        genres.update(anime.get("genres", []))
-    return list(genres)
+# Genre ID Mapping
+GENRE_IDS = {
+    "Action": 1, "Adventure": 2, "Comedy": 4, "Drama": 7, "Fantasy": 8,
+    "Horror": 10, "Mystery": 14, "Romance": 22, "Sci-Fi": 24, "Slice of Life": 26,
+    "Sports": 28, "Supernatural": 30, "Suspense": 37, "Ecchi": 9, "Harem": 49,
+    "Isekai": 50, "Iyashikei": 51, "Magical Girl": 52, "Martial Arts": 53,
+    "Mecha": 54, "Military": 55, "Music": 56, "Parody": 57, "Psychological": 58,
+    "Reincarnation": 59, "Reverse Harem": 60, "Romantic Subtext": 61, "Samurai": 62,
+    "School": 63, "Space": 64, "Super Power": 65, "Time Travel": 66, "Vampire": 67,
+    "Video Game": 68, "Shoujo": 27, "Josei": 41, "Kids": 42, "Seinen": 43, "Shounen": 44
+}
 
-def fetch_anime_by_genre(genre, limit=MAX_ANIME_PER_GENRE):
-    """Fetch anime by genre using the Jikan API with retry logic."""
-    url = f"https://api.jikan.moe/v4/genres/anime"
-    start_time = time.time()  # Track API request time
-    
-    for attempt in range(MAX_RETRIES):
-        try:
-            # Make the API request
-            response = requests.get(url)
-            response.raise_for_status()  # Raise an exception for any 4xx or 5xx errors
-            
-            # Log the entire response for debugging purposes
-            print(f"Full API response for genre '{genre}': {json.dumps(response.json(), indent=2)}")
-            
-            # If the response is successful, parse the anime list
-            anime_list = response.json().get("data", [])
-            end_time = time.time()  # Track response time
-            print(f"API call for genre '{genre}' completed in {end_time - start_time:.2f} seconds.")
-            
-            return [
-                {
-                    "title": anime.get("title", "No Title"),
-                    "score": anime.get("score", "No Score"),
-                    "genres": [g.get("name", "No Genre") for g in anime.get("genres", [])],
-                    "description": anime.get("synopsis", "No Description"),
-                    "studio": anime["studios"][0]["name"] if anime.get("studios") else "No Studio"
-                }
-                for anime in anime_list
-            ]
-        
-        except requests.exceptions.RequestException as e:
-            # Handle rate-limiting or other request exceptions
-            if response.status_code == 429:
-                print(f"Rate-limited by API for genre {genre}, retrying in {RETRY_DELAY} seconds...")
-                time.sleep(RETRY_DELAY)
-            else:
-                print(f"Error fetching anime for genre {genre}: {e}")
-                break  # For other errors, don't retry
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            break
-    
-    return []
-
-def generate_recommendations(favorites):
-    """Generate recommendations based on user favorites."""
-    unique_genres = get_unique_genres(favorites)
-    recommendations = []
+# Helper function to filter unique recommendations by title
+def filter_unique_recommendations(recommendations):
     seen_titles = set()
-    
-    # Limit to the first few genres to avoid excessive processing
-    for genre in unique_genres[:MAX_GENRES]:
-        genre_recommendations = fetch_anime_by_genre(genre)
-        for anime in genre_recommendations:
-            if anime["title"] not in seen_titles:
-                recommendations.append(anime)
-                seen_titles.add(anime["title"])
-    
-    return recommendations
+    unique_recommendations = []
+    for anime in recommendations:
+        if anime["title"] not in seen_titles:
+            seen_titles.add(anime["title"])
+            unique_recommendations.append(anime)
+    return unique_recommendations
 
 def lambda_handler(event, context):
-    print("Received event:", json.dumps(event))  # Logging for debugging
-
-    # Extract user_id from Cognito
+    # Extract user ID
     if "requestContext" in event and "authorizer" in event["requestContext"]:
         user_id = event['requestContext']['authorizer']['claims']['sub']
     else:
-        # Mock user ID for testing (remove in production)
-        user_id = "test-user-id"
+        user_id = "test-user-id"  # Mock user ID for testing
 
     object_key = f"users/{user_id}/favorites.json"
+    http_method = event.get('httpMethod', '').upper()
 
-    # Load the user's favorites from S3
-    try:
-        response = s3.get_object(Bucket=BUCKET_NAME, Key=object_key)
-        favorites = json.loads(response['Body'].read().decode('utf-8'))
-    except s3.exceptions.NoSuchKey:
-        return {
-            "statusCode": 404,
-            "body": json.dumps({"error": "No favorites found for the user."})
+    if http_method == "GET":
+        # Retrieve user's favorites from S3
+        try:
+            response = s3.get_object(Bucket=BUCKET_NAME, Key=object_key)
+            favorites = json.loads(response['Body'].read().decode('utf-8'))
+        except s3.exceptions.NoSuchKey:
+            favorites = []  # No favorites exist for the user
+
+        # Count genres from user's favorites
+        genre_counts = Counter(
+            genre for favorite in favorites for genre in favorite.get("genres", [])
+        )
+
+        if not genre_counts:
+            return {
+                'statusCode': 200,
+                'body': json.dumps({
+                    "message": "No favorite genres found. Please add favorites first.",
+                    "recommendations": []
+                })
+            }
+
+        # Find the most frequent genre
+        most_frequent_genre = genre_counts.most_common(1)[0][0]
+        genre_id = GENRE_IDS.get(most_frequent_genre)
+
+        # Fetch recommendations from Jikan API
+        try:
+            response = requests.get(
+                f"https://api.jikan.moe/v4/anime?genres={genre_id}&order_by=score&sort=desc&limit=20"
+            )
+            response.raise_for_status()  # Raise HTTPError for bad responses
+            data = response.json()
+        except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
+            # Handle API errors
+            return {
+                'statusCode': 500,
+                'body': json.dumps({
+                    "message": "Failed to fetch recommendations from Jikan API.",
+                    "error": str(e)
+                })
+            }
+
+        # Validate API response
+        if "data" not in data:
+            return {
+                'statusCode': 500,
+                'body': json.dumps({
+                    "message": "Unexpected API response format.",
+                    "response": data
+                })
+            }
+
+        # Process recommendations
+        recommendations = [
+            {
+                "title": anime["title"],
+                "score": anime["score"],
+                "url": anime["url"]
+            }
+            for anime in data["data"] if anime.get("score", 0) > 8
+        ]
+
+        # Shuffle and filter unique recommendations
+        random.shuffle(recommendations)  # Shuffle for randomness
+        unique_recommendations = filter_unique_recommendations(recommendations)
+
+        # Limit to 5 recommendations
+        unique_recommendations = unique_recommendations[:5]
+
+        # Response
+        response_body = {
+            "favorite_genre": most_frequent_genre,
+            "recommendations": unique_recommendations
         }
 
-    # Generate recommendations
-    recommendations = generate_recommendations(favorites)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(response_body)
+        }
 
     return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(recommendations)
+        'statusCode': 400,
+        'body': json.dumps({"message": "Invalid request"})
     }
